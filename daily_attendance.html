@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Daily Attendance</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --blue: #1a73e8; --blue-dark: #1255b0;
+  --green: #1a8a4a; --green-bg: #e8f5ee;
+  --red: #d93025; --red-bg: #fce8e6;
+  --orange: #e37400; --orange-bg: #fef3e0;
+  --gray: #f8f9fc; --border: #e2e5ef;
+  --text: #1c1f2e; --sub: #606880;
+  --white: #ffffff; --radius: 18px; --radius-sm: 12px;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray); color: var(--text); min-height: 100vh; }
+
+/* HEADER */
+.header { background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%); color: #fff; padding: 24px 20px 36px; text-align: center; }
+.header .emoji { font-size: 32px; margin-bottom: 6px; }
+.header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+.header .date { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+
+/* CARD */
+.card { background: var(--white); border-radius: var(--radius); margin: -18px 14px 14px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+/* LABEL */
+.label { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--sub); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+.dot.orange { background: var(--orange); }
+
+/* DIVIDER */
+.divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+/* LIVE CLOCK */
+.clock { text-align: center; font-size: 32px; font-weight: 800; font-family: monospace; color: var(--text); letter-spacing: 2px; padding: 4px 0 2px; }
+.clock-date { text-align: center; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+
+/* SELECT / DROPDOWN */
+.select-wrap { position: relative; }
+.select-wrap select {
+  width: 100%; padding: 14px 44px 14px 16px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 16px; color: var(--text); background: var(--white);
+  appearance: none; -webkit-appearance: none; outline: none;
+  cursor: pointer; transition: border-color 0.2s;
+}
+.select-wrap select:focus { border-color: var(--blue); }
+.select-wrap::after { content: '▾'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 16px; pointer-events: none; }
+.select-wrap select option[value=""] { color: #aab0c0; }
+
+/* LOCATION BOX */
+.loc-box { background: var(--gray); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; }
+.loc-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.loc-info strong { display: block; font-size: 14px; color: var(--text); margin-bottom: 2px; }
+.loc-info span { font-size: 12px; color: var(--sub); }
+.loc-info a { font-size: 12px; color: var(--blue); text-decoration: none; font-weight: 600; }
+.alert { border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; font-weight: 600; margin-top: 10px; display: none; }
+.alert.orange { background: var(--orange-bg); color: var(--orange); }
+.alert.red { background: var(--red-bg); color: var(--red); }
+
+/* CAMERA */
+.cam-wrap { border-radius: var(--radius-sm); overflow: hidden; background: #111827; aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; position: relative; }
+.cam-placeholder { text-align: center; color: #6b7280; }
+.cam-placeholder .ci { font-size: 44px; margin-bottom: 8px; }
+.cam-placeholder p { font-size: 13px; }
+video { width: 100%; height: 100%; object-fit: cover; display: none; }
+canvas#photoCanvas { width: 100%; height: 100%; object-fit: cover; display: none; }
+.cam-btns { display: flex; gap: 10px; margin-top: 12px; }
+
+/* BUTTONS */
+.btn { width: 100%; padding: 16px; border: none; border-radius: var(--radius-sm); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.15s, transform 0.1s; -webkit-appearance: none; }
+.btn:active { transform: scale(0.97); opacity: 0.88; }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+.btn.blue { background: var(--blue); color: #fff; }
+.btn.green { background: var(--green); color: #fff; }
+.btn.red { background: var(--red); color: #fff; }
+.btn.outline { background: var(--white); color: var(--blue); border: 1.5px solid var(--blue); }
+.btn.ghost { background: var(--border); color: var(--sub); }
+.btn.sm { flex: 1; padding: 12px 10px; font-size: 14px; }
+.mt { margin-top: 12px; }
+
+/* TIME PILLS */
+.time-row { display: flex; gap: 10px; }
+.time-pill { flex: 1; background: var(--gray); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+.time-pill .tp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sub); }
+.time-pill .tp-val { font-size: 17px; font-weight: 800; font-family: monospace; color: var(--text); margin-top: 4px; }
+.time-pill .tp-val.empty { font-size: 14px; color: #bbb; font-family: inherit; font-weight: 400; }
+
+/* SUCCESS */
+#successCard { display: none; text-align: center; }
+.success-icon { font-size: 60px; margin-bottom: 8px; }
+#successCard h2 { font-size: 22px; font-weight: 800; }
+#successCard p { font-size: 14px; color: var(--sub); margin-top: 6px; line-height: 1.6; }
+.success-rows { background: var(--green-bg); border-radius: var(--radius-sm); padding: 14px; margin: 16px 0; text-align: left; }
+.sr { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 5px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.sr:last-child { border-bottom: none; }
+.sr span:first-child { color: var(--sub); }
+.sr span:last-child { font-weight: 700; color: var(--green); }
+.sr a { font-weight: 700; color: var(--green); text-decoration: none; font-size: 13px; }
+
+/* SETUP */
+#setupScreen { min-height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; text-align: center; background: var(--gray); }
+#setupScreen .si { font-size: 56px; margin-bottom: 14px; }
+#setupScreen h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+#setupScreen p { font-size: 14px; color: var(--sub); line-height: 1.6; margin-bottom: 22px; }
+#setupScreen input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; outline: none; margin-bottom: 10px; -webkit-appearance: none; }
+#setupScreen input:focus { border-color: var(--blue); }
+.setup-err { color: var(--red); font-size: 13px; margin-bottom: 10px; display: none; }
+
+/* ADMIN PANEL */
+#adminPanel { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; }
+.admin-sheet { background: var(--white); border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-height: 80vh; overflow-y: auto; }
+.admin-sheet h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.admin-sheet p { font-size: 13px; color: var(--sub); margin-bottom: 18px; }
+.name-list { list-style: none; margin-bottom: 14px; }
+.name-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--gray); border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 15px; font-weight: 600; }
+.name-item button { background: var(--red-bg); color: var(--red); border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.add-name-row { display: flex; gap: 8px; }
+.add-name-row input { flex: 1; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; outline: none; -webkit-appearance: none; }
+.add-name-row input:focus { border-color: var(--blue); }
+.add-name-row button { background: var(--blue); color: #fff; border: none; border-radius: var(--radius-sm); padding: 12px 18px; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+/* FOOTER */
+.footer { text-align: center; padding: 8px 0 24px; }
+.footer a { font-size: 12px; color: #bbb; text-decoration: none; margin: 0 8px; }
+
+/* SPINNER */
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ═══════ SETUP SCREEN ═══════ -->
+<div id="setupScreen">
+  <div class="si">⚙️</div>
+  <h2>Manager Setup</h2>
+  <p>Paste your Google Apps Script URL below.<br>This screen only appears once.</p>
+  <input type="url" id="urlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+  <div class="setup-err" id="setupErr"></div>
+  <button class="btn blue" onclick="saveSetup()">Save & Open Tool</button>
+</div>
+
+<!-- ═══════ MAIN APP ═══════ -->
+<div id="mainApp" style="display:none;">
+
+  <div class="header">
+    <div class="emoji">📋</div>
+    <h1>Daily Attendance</h1>
+    <div class="date" id="headerDate"></div>
+  </div>
+
+  <div class="card" id="mainCard">
+
+    <!-- Clock -->
+    <div class="clock" id="liveClock"></div>
+    <div class="clock-date" id="liveDate"></div>
+
+    <div class="divider"></div>
+
+    <!-- Name Dropdown -->
+    <div class="label">👤 Select your name</div>
+    <div class="select-wrap">
+      <select id="nameSelect">
+        <option value="">— Choose your name —</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Location -->
+    <div class="label"><span class="dot" id="locDot"></span> Live Location</div>
+    <div class="loc-box">
+      <div class="loc-icon">📍</div>
+      <div class="loc-info">
+        <strong id="locTitle">Detecting location…</strong>
+        <span id="locSub">Please wait</span>
+      </div>
+    </div>
+    <div class="alert orange" id="locWarn">⚠️ Mock/fake location detected. Please turn it off.</div>
+    <div class="alert red" id="locErr">❌ Location denied. Enable GPS and reload.</div>
+
+    <div class="divider"></div>
+
+    <!-- Selfie -->
+    <div class="label">📸 Live Selfie</div>
+    <div class="cam-wrap" id="camWrap">
+      <div class="cam-placeholder" id="camPlaceholder">
+        <div class="ci">🤳</div>
+        <p>Tap "Open Camera" below</p>
+      </div>
+      <video id="videoEl" autoplay playsinline muted></video>
+      <canvas id="photoCanvas"></canvas>
+    </div>
+    <div class="cam-btns">
+      <button class="btn outline sm" id="btnOpenCam" onclick="openCamera()">📷 Open Camera</button>
+      <button class="btn blue sm" id="btnSnap" onclick="takePhoto()" style="display:none;">📸 Take Photo</button>
+      <button class="btn ghost sm" id="btnRetake" onclick="retakePhoto()" style="display:none;">🔄 Retake</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Time Log -->
+    <div class="label">🕐 Time Log</div>
+    <div class="time-row">
+      <div class="time-pill">
+        <div class="tp-label">Login</div>
+        <div class="tp-val empty" id="loginDisplay">—</div>
+      </div>
+      <div class="time-pill">
+        <div class="tp-label">Logout</div>
+        <div class="tp-val empty" id="logoutDisplay">—</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Action Buttons -->
+    <button class="btn green" id="btnLogin" onclick="submit('login')">✅ Log In</button>
+    <button class="btn red mt" id="btnLogout" onclick="submit('logout')" style="display:none;">🔴 Log Out</button>
+
+  </div><!-- /mainCard -->
+
+  <!-- SUCCESS CARD -->
+  <div class="card" id="successCard">
+    <div class="success-icon" id="successEmoji">✅</div>
+    <h2 id="successTitle">Logged In!</h2>
+    <p id="successMsg">Your attendance has been recorded.</p>
+    <div class="success-rows" id="successRows"></div>
+    <button class="btn outline" onclick="afterSuccess()">Done</button>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <a href="#" onclick="openAdmin()">👥 Manage Team Names</a>
+    <a href="#" onclick="changeUrl()">⚙️ Change URL</a>
+  </div>
+
+</div><!-- /mainApp -->
+
+<!-- ═══════ ADMIN PANEL ═══════ -->
+<div id="adminPanel" onclick="closeAdminOutside(event)">
+  <div class="admin-sheet">
+    <h3>👥 Team Names</h3>
+    <p>Add or remove names from the dropdown list.</p>
+    <ul class="name-list" id="nameList"></ul>
+    <div class="add-name-row">
+      <input type="text" id="newNameInput" placeholder="Enter full name…" />
+      <button onclick="addName()">Add</button>
+    </div>
+    <button class="btn ghost mt" onclick="closeAdmin()">Close</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let SHEETS_URL = '';
+let locationData = null;
+let locationOk = false;
+let photoDataUrl = null;
+let stream = null;
+let loginTime = null;
+let logoutTime = null;
+let teamNames = [];
+
+// ══════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  SHEETS_URL = localStorage.getItem('da_url') || '';
+  teamNames = JSON.parse(localStorage.getItem('da_names') || '[]');
+  if (!teamNames.length) teamNames = ['Ahmed', 'Sara', 'Mohamed', 'Fatima'];
+
+  if (!SHEETS_URL) {
+    document.getElementById('setupScreen').style.display = 'flex';
+  } else {
+    bootApp();
+  }
+});
+
+function bootApp() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  startClock();
+  startLocation();
+  renderDropdown();
+  restoreSession();
+}
+
+// ══════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════
+function saveSetup() {
+  const url = document.getElementById('urlInput').value.trim();
+  const err = document.getElementById('setupErr');
+  if (!url.includes('script.google.com') && !url.startsWith('https://')) {
+    err.textContent = 'Please paste a valid Google Apps Script URL.';
+    err.style.display = 'block'; return;
+  }
+  err.style.display = 'none';
+  localStorage.setItem('da_url', url);
+  SHEETS_URL = url;
+  bootApp();
+}
+
+function changeUrl() {
+  const url = prompt('Paste new Google Apps Script URL:');
+  if (url && url.includes('script.google.com')) {
+    localStorage.setItem('da_url', url);
+    SHEETS_URL = url;
+    alert('URL updated!');
+  }
+}
+
+// ══════════════════════════════════════
+//  CLOCK
+// ══════════════════════════════════════
+function startClock() {
+  const tick = () => {
+    const now = new Date();
+    document.getElementById('liveClock').textContent =
+      now.toLocaleTimeString('en-US', { hour12: false });
+    document.getElementById('liveDate').textContent =
+      now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+    document.getElementById('headerDate').textContent =
+      now.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  };
+  tick(); setInterval(tick, 1000);
+}
+
+// ══════════════════════════════════════
+//  LOCATION
+// ══════════════════════════════════════
+function startLocation() {
+  if (!navigator.geolocation) { showLocErr('Geolocation not supported.'); return; }
+  navigator.geolocation.watchPosition(onLocSuccess, onLocFail,
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
+
+function onLocSuccess(pos) {
+  const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
+  const lag = Date.now() - pos.timestamp;
+  let flags = [];
+  if (lat === 0 && lng === 0) flags.push('null island');
+  if (accuracy < 3) flags.push('accuracy too high');
+  if (lag > 30000) flags.push('stale timestamp');
+  if (speed !== null && speed > 100) flags.push('impossible speed');
+  if (lat % 1 === 0 || lng % 1 === 0) flags.push('round coords');
+
+  if (flags.length >= 2) {
+    locationOk = false; locationData = null;
+    document.getElementById('locDot').className = 'dot orange';
+    document.getElementById('locTitle').textContent = 'Suspicious location';
+    document.getElementById('locSub').textContent = 'Signals: ' + flags.join(', ');
+    document.getElementById('locWarn').style.display = 'block';
+    return;
+  }
+
+  locationOk = true;
+  locationData = { lat, lng, accuracy };
+  const url = `https://maps.google.com/?q=${lat},${lng}`;
+  document.getElementById('locDot').className = 'dot green';
+  document.getElementById('locTitle').textContent = 'Location captured ✅';
+  document.getElementById('locSub').innerHTML =
+    `Accuracy ~${Math.round(accuracy)}m &nbsp;·&nbsp; <a href="${url}" target="_blank">📍 View on map</a>`;
+  document.getElementById('locWarn').style.display = 'none';
+  document.getElementById('locErr').style.display = 'none';
+}
+
+function onLocFail(e) {
+  locationOk = false; locationData = null;
+  document.getElementById('locDot').className = 'dot red';
+  document.getElementById('locTitle').textContent = 'Location unavailable';
+  document.getElementById('locErr').style.display = 'block';
+  document.getElementById('locErr').textContent =
+    e.code === 1 ? '❌ Location denied. Please allow GPS in browser settings and reload.' : '❌ Cannot get location. Make sure GPS is on.';
+}
+
+function showLocErr(msg) {
+  document.getElementById('locErr').textContent = '❌ ' + msg;
+  document.getElementById('locErr').style.display = 'block';
+}
+
+// ══════════════════════════════════════
+//  DROPDOWN
+// ══════════════════════════════════════
+function renderDropdown() {
+  const sel = document.getElementById('nameSelect');
+  sel.innerHTML = '<option value="">— Choose your name —</option>';
+  teamNames.sort().forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n; opt.textContent = n;
+    sel.appendChild(opt);
+  });
+}
+
+// ══════════════════════════════════════
+//  ADMIN PANEL
+// ══════════════════════════════════════
+function openAdmin() {
+  renderNameList();
+  document.getElementById('adminPanel').style.display = 'flex';
+}
+function closeAdmin() { document.getElementById('adminPanel').style.display = 'none'; }
+function closeAdminOutside(e) { if (e.target === document.getElementById('adminPanel')) closeAdmin(); }
+
+function renderNameList() {
+  const ul = document.getElementById('nameList');
+  ul.innerHTML = '';
+  teamNames.sort().forEach(n => {
+    const li = document.createElement('li');
+    li.className = 'name-item';
+    li.innerHTML = `<span>${n}</span><button onclick="removeName('${n}')">Remove</button>`;
+    ul.appendChild(li);
+  });
+}
+
+function addName() {
+  const input = document.getElementById('newNameInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (teamNames.includes(name)) { alert('Name already exists.'); return; }
+  teamNames.push(name);
+  saveNames();
+  input.value = '';
+  renderNameList();
+  renderDropdown();
+}
+
+function removeName(name) {
+  if (!confirm(`Remove "${name}" from the list?`)) return;
+  teamNames = teamNames.filter(n => n !== name);
+  saveNames();
+  renderNameList();
+  renderDropdown();
+}
+
+function saveNames() { localStorage.setItem('da_names', JSON.stringify(teamNames)); }
+
+// ══════════════════════════════════════
+//  CAMERA
+// ══════════════════════════════════════
+async function openCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
+      audio: false
+    });
+    const v = document.getElementById('videoEl');
+    v.srcObject = stream;
+    v.style.display = 'block';
+    document.getElementById('camPlaceholder').style.display = 'none';
+    document.getElementById('photoCanvas').style.display = 'none';
+    document.getElementById('btnOpenCam').style.display = 'none';
+    document.getElementById('btnSnap').style.display = 'flex';
+  } catch(e) {
+    alert('Camera access denied. Please allow camera in browser settings.');
+  }
+}
+
+function takePhoto() {
+  const v = document.getElementById('videoEl');
+  const c = document.getElementById('photoCanvas');
+  c.width = v.videoWidth || 640;
+  c.height = v.videoHeight || 480;
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width, 0); ctx.scale(-1, 1);
+  ctx.drawImage(v, 0, 0);
+  ctx.setTransform(1,0,0,1,0,0);
+
+  // Timestamp watermark
+  const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const name = document.getElementById('nameSelect').value || '';
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, c.height - 42, c.width, 42);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText(`📍 Live · ${name} · ${now}`, 10, c.height - 14);
+
+  photoDataUrl = c.toDataURL('image/jpeg', 0.82);
+  stream.getTracks().forEach(t => t.stop());
+  v.style.display = 'none';
+  c.style.display = 'block';
+  document.getElementById('btnSnap').style.display = 'none';
+  document.getElementById('btnRetake').style.display = 'flex';
+}
+
+function retakePhoto() {
+  photoDataUrl = null;
+  document.getElementById('photoCanvas').style.display = 'none';
+  document.getElementById('btnRetake').style.display = 'none';
+  document.getElementById('btnOpenCam').style.display = 'flex';
+  document.getElementById('camPlaceholder').style.display = 'block';
+}
+
+// ══════════════════════════════════════
+//  SUBMIT
+// ══════════════════════════════════════
+async function submit(type) {
+  const name = document.getElementById('nameSelect').value;
+  if (!name) { alert('Please select your name from the list.'); return; }
+  if (!locationOk || !locationData) { alert('Real GPS location is required. Make sure GPS is on and no fake location app is active.'); return; }
+  if (!photoDataUrl) { alert('Please take a live selfie first.'); return; }
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+  const dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'2-digit', day:'2-digit' });
+  const mapsLink = `https://maps.google.com/?q=${locationData.lat},${locationData.lng}`;
+  const locLabel = `${locationData.lat.toFixed(5)}, ${locationData.lng.toFixed(5)} (~${Math.round(locationData.accuracy)}m)`;
+
+  const btn = document.getElementById(type === 'login' ? 'btnLogin' : 'btnLogout');
+  btn.innerHTML = '<span class="spinner"></span> Submitting…';
+  btn.disabled = true;
+
+  try {
+    const params = new URLSearchParams();
+    params.append('name', name);
+    params.append('type', type);
+    params.append('date', dateStr);
+    params.append('time', timeStr);
+    params.append('locationLabel', locLabel);
+    params.append('locationLink', mapsLink);
+    params.append('photo', photoDataUrl.split(',')[1]);
+
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+  } catch(e) { /* no-cors — assume ok */ }
+
+  if (type === 'login') { loginTime = timeStr; }
+  else { logoutTime = timeStr; }
+  sessionStorage.setItem('da_session', JSON.stringify({ loginTime, logoutTime, name }));
+
+  showSuccess(type, name, timeStr, dateStr, mapsLink);
+}
+
+function showSuccess(type, name, timeStr, dateStr, mapsLink) {
+  document.getElementById('mainCard').style.display = 'none';
+  const sc = document.getElementById('successCard');
+  sc.style.display = 'block';
+  document.getElementById('successEmoji').textContent = type === 'login' ? '✅' : '👋';
+  document.getElementById('successTitle').textContent = type === 'login' ? 'Logged In!' : 'Logged Out!';
+  document.getElementById('successMsg').textContent = 'Your attendance has been recorded successfully.';
+  document.getElementById('successRows').innerHTML = `
+    <div class="sr"><span>Name</span><span>${name}</span></div>
+    <div class="sr"><span>Date</span><span>${dateStr}</span></div>
+    <div class="sr"><span>${type === 'login' ? 'Login' : 'Logout'} Time</span><span>${timeStr}</span></div>
+    <div class="sr"><span>Location</span><a href="${mapsLink}" target="_blank">📍 View on map</a></div>
+  `;
+}
+
+function afterSuccess() {
+  document.getElementById('successCard').style.display = 'none';
+  document.getElementById('mainCard').style.display = 'block';
+
+  if (loginTime) {
+    document.getElementById('loginDisplay').textContent = loginTime;
+    document.getElementById('loginDisplay').className = 'tp-val';
+    document.getElementById('btnLogin').style.display = 'none';
+    document.getElementById('btnLogout').style.display = 'flex';
+  }
+  if (logoutTime) {
+    document.getElementById('logoutDisplay').textContent = logoutTime;
+    document.getElementById('logoutDisplay').className = 'tp-val';
+    document.getElementById('btnLogout').style.display = 'none';
+  }
+
+  // Reset photo
+  photoDataUrl = null;
+  document.getElementById('photoCanvas').style.display = 'none';
+  document.getElementById('btnRetake').style.display = 'none';
+  document.getElementById('btnOpenCam').style.display = 'flex';
+  document.getElementById('camPlaceholder').style.display = 'block';
+
+  // Re-enable buttons
+  document.getElementById('btnLogin').innerHTML = '✅ Log In';
+  document.getElementById('btnLogin').disabled = false;
+  document.getElementById('btnLogout').innerHTML = '🔴 Log Out';
+  document.getElementById('btnLogout').disabled = false;
+}
+
+function restoreSession() {
+  const s = sessionStorage.getItem('da_session');
+  if (!s) return;
+  const { loginTime: lt, logoutTime: lo, name } = JSON.parse(s);
+  loginTime = lt; logoutTime = lo;
+  if (name) document.getElementById('nameSelect').value = name;
+  if (lt) { document.getElementById('loginDisplay').textContent = lt; document.getElementById('loginDisplay').className = 'tp-val'; document.getElementById('btnLogin').style.display = 'none'; document.getElementById('btnLogout').style.display = 'flex'; }
+  if (lo) { document.getElementById('logoutDisplay').textContent = lo; document.getElementById('logoutDisplay').className = 'tp-val'; document.getElementById('btnLogout').style.display = 'none'; }
+}
+</script>
+</body>
+</html>
